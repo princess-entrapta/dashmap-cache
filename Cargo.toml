@@ -1,0 +1,15 @@
+[package]
+name = "dashmap-cache"
+version = "0.1.0"
+edition = "2021"
+licence = "MIT"
+description = "A simple dashmap wrapper to cache results from arbitrary functions and methods"
+
+[lib]
+crate-type = ["lib"]
+
+
+[dependencies]
+dashmap = "5.5.3"
+rmp-serde = "1.1.2"
+serde = { version = "1.0.197", features = ["derive"] }
