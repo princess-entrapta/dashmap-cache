@@ -1,3 +1,8 @@
+Simple example how to use the lib.
+
+Dashmap cache is thread safe and can be shared among threads through Arc<T> in a similar way than Dashmap can.
+
+```rust
 mod lib;
 
 use crate::lib::DashmapCache;
@@ -81,3 +86,4 @@ fn main() {
         test
     */
 }
+```
