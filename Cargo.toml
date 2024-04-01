@@ -1,6 +1,6 @@
 [package]
 name = "dashmap-cache"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2021"
 license = "MIT"
 description = "A simple dashmap wrapper to cache results from arbitrary functions and methods"
@@ -10,9 +10,10 @@ crate-type = ["lib"]
 
 [features]
 default = []
-tokio = []
+tokio = ["dep:tokio"]
 
 [dependencies]
 dashmap = "5.5.3"
 rmp-serde = "1.1.2"
 serde = { version = "1.0.197", features = ["derive"] }
+tokio = {version="1", optional = true }
