@@ -124,7 +124,7 @@ impl<'a> DashmapCache {
 
         match self.inner.get(&arg_bytes) {
             None => {
-                let val = closure(&arg).await;
+                let val = closure(&arg).await.unwrap();
                 let val_bytes = rmp_serde::to_vec(&val)?;
                 self.insert(invalidate_keys, arg_bytes, val_bytes);
                 Ok(val)
