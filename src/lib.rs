@@ -1,8 +1,10 @@
+use core::future::Future;
 use core::hash::Hash;
 use dashmap::{DashMap, DashSet};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::marker::{Send, Sync};
+use std::pin::Pin;
 #[derive(Clone, Debug)]
 pub struct DashmapCache {
     inner: DashMap<Vec<u8>, Vec<u8>>,
@@ -68,6 +70,33 @@ impl<'a> DashmapCache {
         match self.inner.get(&arg_bytes) {
             None => {
                 let val = closure(&arg);
+                let val_bytes = rmp_serde::to_vec(&val)?;
+                self.insert(invalidate_keys, arg_bytes, val_bytes);
+                Ok(val)
+            }
+            Some(val) => {
+                let ret_val = rmp_serde::from_slice::<V>(&val)?;
+                Ok(ret_val.to_owned())
+            }
+        }
+    }
+
+    pub async fn async_cached<F, A, V>(
+        &self,
+        invalidate_keys: &Vec<String>,
+        closure: F,
+        arg: A,
+    ) -> Result<V, CacheError>
+    where
+        F: Fn(&A) -> Pin<Box<dyn Future<Output = V>>>,
+        A: Hash + Sync + Send + Eq + Serialize,
+        V: Send + Sync + Clone + Serialize + for<'b> Deserialize<'b>,
+    {
+        let arg_bytes = rmp_serde::to_vec(&arg)?;
+
+        match self.inner.get(&arg_bytes) {
+            None => {
+                let val = closure(&arg).await;
                 let val_bytes = rmp_serde::to_vec(&val)?;
                 self.insert(invalidate_keys, arg_bytes, val_bytes);
                 Ok(val)
