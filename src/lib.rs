@@ -54,6 +54,29 @@ impl<'a> DashmapCache {
         self.inner.insert(key, val)
     }
 
+    /// Atomic operation to replace a cached entry by a new computation value
+    pub fn refresh_cache<F, A, V>(
+        &self,
+        invalidate_keys: &Vec<String>,
+        closure: F,
+        arg: A,
+    ) -> Result<V, CacheError>
+    where
+        F: Fn(&A) -> V,
+        A: Hash + Sync + Send + Eq + Serialize,
+        V: Send + Sync + Clone + Serialize + for<'b> Deserialize<'b>,
+    {
+        let arg_bytes = rmp_serde::to_vec(&arg)?;
+        let val = closure(&arg);
+        let val_bytes = rmp_serde::to_vec(&val)?;
+        self.insert(invalidate_keys, arg_bytes, val_bytes);
+        Ok(val)
+    }
+
+    /// Computes a signature for arg
+    /// If already present in the cache, returns directly associated return value
+    /// Otherwise, compute a new return value and fills the cache with it
+    /// It is recommended to use a call enum and dispatch in the same closure for the same cache if the input types or values are susceptible to overlap.
     pub fn cached<F, A, V>(
         &self,
         invalidate_keys: &Vec<String>,
@@ -81,6 +104,7 @@ impl<'a> DashmapCache {
         }
     }
 
+    /// Async version of cached()
     pub async fn async_cached<F, A, V>(
         &self,
         invalidate_keys: &Vec<String>,
@@ -108,6 +132,7 @@ impl<'a> DashmapCache {
         }
     }
 
+    /// Tokio version of cached()
     #[cfg(feature = "tokio")]
     pub async fn tokio_cached<F, A, V>(
         &self,
@@ -136,20 +161,13 @@ impl<'a> DashmapCache {
         }
     }
 
-    fn invalidate_inner(&self, tag: &str) {
-        let hashes = self.tags.get(tag);
-        match hashes {
-            Some(lst_hashes) => {
-                for hsh in lst_hashes.clone() {
-                    self.inner.remove(&hsh);
-                }
-            }
-            None => {}
-        }
-    }
-
     pub fn invalidate(&self, tag: &str) {
-        self.invalidate_inner(tag);
-        self.tags.remove(tag);
+        let hashes = self.tags.get(tag);
+        if hashes.is_some() {
+            self.tags.remove(tag);
+            for hsh in hashes.unwrap().clone() {
+                self.inner.remove(&hsh);
+            }
+        }
     }
 }
